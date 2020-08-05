@@ -1,0 +1,112 @@
+{
+    "ClassName": "Part",
+    "Properties": {
+        "CanCollide": false,
+        "Massless": true,
+        "Size": {
+            "Type": "Vector3",
+            "Value": [0.2, 5.5, 0.2]
+        }
+    },
+    "Children": [
+        {
+            "Name": "HitboxPoint",
+            "ClassName": "Attachment",
+            "Properties": {
+                "Visible": true,
+                "Position": {
+                    "Type": "Vector3",
+                    "Value": [0, -1.5, 0]
+                }
+            }
+        },
+        {
+            "Name": "HitboxPoint",
+            "ClassName": "Attachment",
+            "Properties": {
+                "Visible": true,
+                "Position": {
+                    "Type": "Vector3",
+                    "Value": [0, -1, 0]
+                }
+            }
+        },
+        {
+            "Name": "HitboxPoint",
+            "ClassName": "Attachment",
+            "Properties": {
+                "Visible": true,
+                "Position": {
+                    "Type": "Vector3",
+                    "Value": [0, -0.5, 0]
+                }
+            }
+        },
+        {
+            "Name": "HitboxPoint",
+            "ClassName": "Attachment",
+            "Properties": {
+                "Visible": true,
+                "Position": {
+                    "Type": "Vector3",
+                    "Value": [0, 0, 0]
+                }
+            }
+        },
+        {
+            "Name": "HitboxPoint",
+            "ClassName": "Attachment",
+            "Properties": {
+                "Visible": true,
+                "Position": {
+                    "Type": "Vector3",
+                    "Value": [0, 0.5, 0]
+                }
+            }
+        },
+        {
+            "Name": "HitboxPoint",
+            "ClassName": "Attachment",
+            "Properties": {
+                "Visible": true,
+                "Position": {
+                    "Type": "Vector3",
+                    "Value": [0, 1, 0]
+                }
+            }
+        },
+        {
+            "Name": "HitboxPoint",
+            "ClassName": "Attachment",
+            "Properties": {
+                "Visible": true,
+                "Position": {
+                    "Type": "Vector3",
+                    "Value": [0, 1.5, 0]
+                }
+            }
+        },
+        {
+            "Name": "HitboxPoint",
+            "ClassName": "Attachment",
+            "Properties": {
+                "Visible": true,
+                "Position": {
+                    "Type": "Vector3",
+                    "Value": [0, 2, 0]
+                }
+            }
+        },
+        {
+            "Name": "HitboxPoint",
+            "ClassName": "Attachment",
+            "Properties": {
+                "Visible": true,
+                "Position": {
+                    "Type": "Vector3",
+                    "Value": [0, 2.5, 0]
+                }
+            }
+        }
+    ]
+}

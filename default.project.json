@@ -1,0 +1,78 @@
+{
+  "name": "CloudHitbox",
+  "tree": {
+    "$className": "DataModel",
+    "HttpService": {
+      "$className": "HttpService",
+      "$properties": {
+        "HttpEnabled": true
+      }
+    },
+    "Lighting": {
+      "$className": "Lighting",
+      "$properties": {
+        "Outlines": false,
+        "Technology": "Voxel",
+        "Brightness": 2.0,
+        "Ambient": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "GlobalShadows": true
+      }
+    },
+    "ReplicatedStorage": {
+      "$className": "ReplicatedStorage",
+      "CloudHitbox": {
+        "$path": "src"
+      }
+    },
+    "ServerScriptService": {
+      "$className": "ServerScriptService",
+      "WeaponServer": {
+        "$path": "test/weaponServer.server.lua"
+      }
+    },
+    "StarterPack": {
+      "$className": "StarterPack",
+      "Stick": {
+        "$path": "test/stick"
+      }
+    },
+    "SoundService": {
+      "$className": "SoundService",
+      "$properties": {
+        "RespectFilteringEnabled": true
+      }
+    },
+    "Workspace": {
+      "$className": "Workspace",
+      "$properties": {
+        "FilteringEnabled": true
+      },
+      "Baseplate": {
+        "$className": "Part",
+        "$properties": {
+          "Anchored": true,
+          "Position": [
+            0.0,
+            -10.0,
+            0.0
+          ],
+          "Locked": true,
+          "Color": [
+            0.38823,
+            0.37254,
+            0.38823
+          ],
+          "Size": [
+            512.0,
+            20.0,
+            512.0
+          ]
+        }
+      }
+    }
+  }
+}

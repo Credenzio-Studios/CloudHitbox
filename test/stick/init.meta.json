@@ -1,0 +1,13 @@
+{
+    "className": "Tool",
+    "properties": {
+        "ToolTip": "Beating stick for testing CloudHitbox",
+        "CanBeDropped": false,
+        "Grip": [
+            0, -2, 0,
+            1, 0, 0,
+            0, 1, 0,
+            0, 0, 1
+        ]
+    }
+}
