@@ -1,0 +1,9 @@
+# Roblox Place Files
+/*.rbxlx
+/*.rbxlx.lock
+
+# Environment Lua File
+/env.lua
+
+# Selene Roblox Lib File
+/roblox.toml
