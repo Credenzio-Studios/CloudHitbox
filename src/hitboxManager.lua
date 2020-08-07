@@ -2,8 +2,11 @@ local RunService = game:GetService("RunService")
 local CollectionService = game:GetService("CollectionService")
 local Debris = game:GetService("Debris")
 
+local isClient = RunService:IsClient()
+local isServer = RunService:IsServer()
+
 local debugFolder = Instance.new("Folder")
-debugFolder.Name = "CloudHitboxDebug"
+debugFolder.Name = "CloudHitboxDebug_"..(isClient and "Client" or "Server")
 debugFolder.Archivable = false
 debugFolder.Parent = workspace
 
@@ -26,15 +29,7 @@ local HitboxManager = {} do
         end
     end
 
-    local function onHeartbeat()
-        local currentTime = time()
-
-        if currentTime - HitboxManager._lastUpdate < (1 / HitboxManager._settings.UpdateFrequency) then
-            return
-        end
-        
-        HitboxManager._lastUpdate = currentTime
-
+    local function onClientHeartbeat()
         for hitboxIndex = #HitboxManager._activeHitboxes, 1, -1 do
             local hitbox = HitboxManager._activeHitboxes[hitboxIndex]
 
@@ -44,7 +39,8 @@ local HitboxManager = {} do
                 for _, point in pairs(hitbox.pointCloud) do
                     local lastPosition = hitbox._lastCFrame * point
                     local currentPosition = hitbox.primaryPart.CFrame * point
-                    local magnitude = (lastPosition - currentPosition).magnitude
+                    local dir = (currentPosition - lastPosition)
+                    local magnitude = dir.magnitude
 
                     if HitboxManager._settings.DebugMode then
                         local debugLine = Instance.new("Part")
@@ -60,6 +56,12 @@ local HitboxManager = {} do
 
                         Debris:AddItem(debugLine, 5)
                     end
+
+                    local raycastResult = workspace:Raycast(lastPosition, dir, hitbox._raycastParams)
+
+                    if raycastResult then
+                        hitbox._touchedEvent:Fire(raycastResult)
+                    end
                 end
             end
         end
@@ -69,6 +71,27 @@ local HitboxManager = {} do
                 hitbox._lastCFrame = hitbox.primaryPart.CFrame
             end
         end
+    end
+
+    local function onServerHeartbeat()
+    end
+
+    local function onHeartbeat(_step)
+        local currentTime = time()
+
+        if currentTime - HitboxManager._lastUpdate < (1 / HitboxManager._settings.UpdateFrequency) then
+            return
+        end
+
+        if isServer then
+            onServerHeartbeat()
+        end
+
+        if isClient then
+            onClientHeartbeat()
+        end
+        
+        HitboxManager._lastUpdate = currentTime
     end
 
     function HitboxManager:run(settings)
@@ -117,6 +140,8 @@ local HitboxManager = {} do
 
             self._connections.Heartbeat = RunService.Heartbeat:Connect(onHeartbeat)
         end
+
+        return debugFolder
     end
 
     function HitboxManager:stop()

@@ -4,7 +4,7 @@ local CollectionService = game:GetService("CollectionService")
 
 local settings = require(script.settings)
 local hitboxManager = require(script.hitboxManager)
-hitboxManager:run(settings)
+local debugFolder = hitboxManager:run(settings)
 
 local CloudHitbox = {
     version = "0.1",
@@ -16,17 +16,25 @@ local CloudHitbox = {
         assert(typeof(instance) == "Instance", "instance must be a Model or BasePart instance, got "..typeof(instance))
         assert(instance:IsA("Model") and instance.PrimaryPart or instance:IsA("BasePart"), "instance must be a Model or BasePart instance, got "..instance.ClassName)
         assert(type(pointCloud) == "table" and #pointCloud > 0, "pointCloud must be a table with n > 0, got "..typeof(pointCloud))
-        assert(type(ignoreList) == "table", "ignoreList must be a table, got "..typeof(ignoreList))
+        assert(typeof(ignoreList) == "table", "ignoreList must be a table, got "..typeof(ignoreList))
 
         local self = hitboxManager:getHitbox(instance)
         if self then
             return self
         end
+        
+        table.insert(ignoreList, debugFolder)
+
+        local raycastParams = RaycastParams.new()
+        raycastParams.FilterType = Enum.RaycastFilterType.Blacklist
+        raycastParams.IgnoreWater = true
+        raycastParams.FilterDescendantsInstances = ignoreList
 
         self = {
             primaryPart = instance,
             pointCloud = pointCloud,
-            ignoreList = ignoreList,
+            _ignoreList = ignoreList,
+            _raycastParams = raycastParams,
             _touchedEvent = Instance.new("BindableEvent"),
             _enabledEvent = Instance.new("BindableEvent"),
             _isEnabled = false,
