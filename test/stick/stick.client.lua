@@ -97,7 +97,7 @@ local function onActivated()
 end
 
 local function onTouched(raycastResult)
-    print('Hitbox detected a hit: ', raycastResult.Instance:GetFullName())
+    print("Hitbox client detected a hit: ", raycastResult.Instance:GetFullName())
 end
 
 tool.Equipped:Connect(onEquipped)

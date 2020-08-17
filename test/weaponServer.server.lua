@@ -58,6 +58,10 @@ local function registerWeapon(player, tool)
 
     local hitbox = CloudHitbox.new(handle, hitboxPoints, { player.Character })
 
+    hitbox.Touched:Connect(function(raycastResult)
+        print("Hitbox server detected a hit: "..raycastResult.Instance:GetFullName())
+    end)
+
     local weapon = {
         tool = tool,
         player = player,
