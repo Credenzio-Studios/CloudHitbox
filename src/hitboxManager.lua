@@ -1,5 +1,9 @@
+local DEBUG_COLOR_SERVER = Color3.new(0.1, 0.1, 0.1)
+local DEBUG_COLOR_CLIENT = Color3.new(0.65, 0.65, 0.65)
+local EMPTY_VECTOR3 = Vector3.new(0, 0, 0)
+local VELOCITY_EXTRAPOLATION = 1 / 10
+
 local RunService = game:GetService("RunService")
-local CollectionService = game:GetService("CollectionService")
 local Debris = game:GetService("Debris")
 
 local isClient = RunService:IsClient()
@@ -10,6 +14,11 @@ debugFolder.Name = "CloudHitboxDebug_"..(isClient and "Client" or "Server")
 debugFolder.Archivable = false
 debugFolder.Parent = workspace
 
+local serverDebugFolder
+if not isServer then
+    serverDebugFolder = workspace:WaitForChild("CloudHitboxDebug_Server")
+end
+
 local HitboxManager = {} do
     HitboxManager._hitboxes = {}
     HitboxManager._activeHitboxes = {}
@@ -17,6 +26,16 @@ local HitboxManager = {} do
     HitboxManager._connections = {}
     HitboxManager._settings = nil
     HitboxManager._lastUpdate = -math.huge
+
+    local function setRaycastFilter(hitbox)
+        local filter = {
+            unpack(hitbox._ignoreList),
+            debugFolder,
+            serverDebugFolder
+        }
+
+        hitbox._raycastParams.FilterDescendantsInstances = filter
+    end
 
     local function getHitbox(primaryPartOrModel)
         return HitboxManager._hitboxes[primaryPartOrModel]
@@ -29,7 +48,13 @@ local HitboxManager = {} do
         end
     end
 
-    local function onClientHeartbeat()
+    local function onHeartbeat(_step)
+        local currentTime = time()
+
+        if currentTime - HitboxManager._lastUpdate < (1 / HitboxManager._settings.UpdateFrequency) then
+            return
+        end
+        
         for hitboxIndex = #HitboxManager._activeHitboxes, 1, -1 do
             local hitbox = HitboxManager._activeHitboxes[hitboxIndex]
 
@@ -38,7 +63,7 @@ local HitboxManager = {} do
             else
                 for _, point in pairs(hitbox.pointCloud) do
                     local lastPosition = hitbox._lastCFrame * point
-                    local currentPosition = hitbox.primaryPart.CFrame * point
+                    local currentPosition = hitbox.primaryPart.CFrame * point + (isServer and hitbox.primaryPart.Velocity * VELOCITY_EXTRAPOLATION or EMPTY_VECTOR3)
                     local dir = (currentPosition - lastPosition)
                     local magnitude = dir.magnitude
 
@@ -49,6 +74,7 @@ local HitboxManager = {} do
                         debugLine.Anchored = true
                         debugLine.CanCollide = false
                         debugLine.Locked = true
+                        debugLine.Color = isServer and DEBUG_COLOR_SERVER or DEBUG_COLOR_CLIENT
                         debugLine.CFrame = CFrame.new(lastPosition, currentPosition) * CFrame.new(0, 0, -magnitude * 0.5)
                         debugLine.Size = Vector3.new(0, 0, magnitude)
 
@@ -57,9 +83,11 @@ local HitboxManager = {} do
                         Debris:AddItem(debugLine, 5)
                     end
 
+                    setRaycastFilter(hitbox)
                     local raycastResult = workspace:Raycast(lastPosition, dir, hitbox._raycastParams)
 
-                    if raycastResult then
+                    if raycastResult and not hitbox._hits[raycastResult.Instance] then
+                        hitbox._hits[raycastResult.Instance] = true
                         hitbox._touchedEvent:Fire(raycastResult)
                     end
                 end
@@ -68,30 +96,29 @@ local HitboxManager = {} do
 
         for _, hitbox in pairs(HitboxManager._hitboxes) do
             if hitbox.primaryPart then
-                hitbox._lastCFrame = hitbox.primaryPart.CFrame
+                hitbox._lastCFrame = hitbox.primaryPart.CFrame + (isServer and hitbox.primaryPart.Velocity * VELOCITY_EXTRAPOLATION or EMPTY_VECTOR3)
             end
-        end
-    end
-
-    local function onServerHeartbeat()
-    end
-
-    local function onHeartbeat(_step)
-        local currentTime = time()
-
-        if currentTime - HitboxManager._lastUpdate < (1 / HitboxManager._settings.UpdateFrequency) then
-            return
-        end
-
-        if isServer then
-            onServerHeartbeat()
-        end
-
-        if isClient then
-            onClientHeartbeat()
         end
         
         HitboxManager._lastUpdate = currentTime
+    end
+
+    function HitboxManager:setActiveHitbox(hitbox, isActive)
+        assert(self, "Missing 'self' argument")
+
+        if isActive then
+            if not table.find(HitboxManager._activeHitboxes, hitbox) then
+                hitbox._hits = {}
+
+                table.insert(HitboxManager._activeHitboxes, hitbox)
+            end
+        else
+            local index = table.find(HitboxManager._activeHitboxes, hitbox)
+
+            if index then
+                table.remove(HitboxManager._activeHitboxes, index)
+            end
+        end
     end
 
     function HitboxManager:run(settings)
@@ -104,39 +131,6 @@ local HitboxManager = {} do
 
             self._activeHitboxes = {}
             self._settings = settings
-
-            for _, hitboxInstance in pairs(CollectionService:GetTagged(settings.CollectionTag)) do
-                local hitbox = getHitbox(hitboxInstance)
-
-                if hitbox then
-                    table.insert(self._activeHitboxes, hitbox)
-                end
-            end
-
-            local instanceAddedSignal = CollectionService:GetInstanceAddedSignal(settings.CollectionTag)
-            local instanceRemovedSignal = CollectionService:GetInstanceRemovedSignal(settings.CollectionTag)
-
-            self._connections.CollectionInstanceAdded = instanceAddedSignal:Connect(function(object)
-                if object:IsA("Model") or object:IsA("BasePart") then
-                    local hitbox = getHitbox(object)
-
-                    if hitbox and not table.find(self._activeHitboxes, hitbox) then
-                        table.insert(self._activeHitboxes, hitbox)
-                    end
-                end
-            end)
-            
-            self._connections.CollectionInstanceRemoved = instanceRemovedSignal:Connect(function(object)
-                if object:IsA("Model") or object:IsA("BasePart") then
-                    local hitbox = getHitbox(object)
-
-                    local index = table.find(self._activeHitboxes, hitbox)
-
-                    if index then
-                        table.remove(self._activeHitboxes, index)
-                    end
-                end
-            end)
 
             self._connections.Heartbeat = RunService.Heartbeat:Connect(onHeartbeat)
         end

@@ -1,7 +1,3 @@
--- Todo: Add hitbox hit detection handler, using CollectionService to signal hitbox added events
-
-local CollectionService = game:GetService("CollectionService")
-
 local settings = require(script.settings)
 local hitboxManager = require(script.hitboxManager)
 local debugFolder = hitboxManager:run(settings)
@@ -61,15 +57,8 @@ local CloudHitbox = {
         assert(self, "Missing 'self' argument")
         assert(type(enabled) == "boolean", "enabled must be a boolean, got "..typeof(enabled))
 
-        if self._isEnabled == true and enabled == false then
-            self._isEnabled = false
-
-            CollectionService:RemoveTag(self.primaryPart, settings.CollectionTag)
-        elseif self._isEnabled == false and enabled == true then
-            self._isEnabled = true
-
-            CollectionService:AddTag(self.primaryPart, settings.CollectionTag)
-        end
+        hitboxManager:setActiveHitbox(self, enabled)
+        self._isEnabled = enabled
 
         self._enabledEvent:Fire(self._isEnabled)
     end
