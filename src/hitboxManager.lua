@@ -29,9 +29,9 @@ local HitboxManager = {} do
 
     local function setRaycastFilter(hitbox)
         local filter = {
-            unpack(hitbox._ignoreList),
             debugFolder,
-            serverDebugFolder
+            serverDebugFolder,
+            unpack(hitbox._ignoreList)
         }
 
         hitbox._raycastParams.FilterDescendantsInstances = filter
