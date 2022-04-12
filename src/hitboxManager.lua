@@ -28,11 +28,17 @@ local HitboxManager = {} do
     HitboxManager._lastUpdate = -math.huge
 
     local function setRaycastFilter(hitbox)
-        local filter = {
-            debugFolder,
-            serverDebugFolder,
-            unpack(hitbox._ignoreList)
-        }
+        local filter = hitbox._filter
+        table.clear(filter)
+
+        table.insert(filter, debugFolder)
+        table.insert(filter, serverDebugFolder)
+
+        for _, v in ipairs(hitbox._ignoreList) do
+            if typeof(v) == "Instance" then
+                table.insert(filter, v)
+            end
+        end
 
         hitbox._raycastParams.FilterDescendantsInstances = filter
     end

@@ -30,6 +30,7 @@ local CloudHitbox = {
             primaryPart = instance,
             pointCloud = pointCloud,
             _ignoreList = ignoreList,
+            _filter = {},
             _raycastParams = raycastParams,
             _touchedEvent = Instance.new("BindableEvent"),
             _enabledEvent = Instance.new("BindableEvent"),
