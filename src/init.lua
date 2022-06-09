@@ -1,6 +1,6 @@
 local settings = require(script.settings)
 local hitboxManager = require(script.hitboxManager)
-local debugFolder = hitboxManager:run(settings)
+hitboxManager:run(settings)
 
 local CloudHitbox = {
     version = "0.1",
@@ -18,8 +18,6 @@ local CloudHitbox = {
         if self then
             return self
         end
-        
-        table.insert(ignoreList, debugFolder)
 
         local raycastParams = RaycastParams.new()
         raycastParams.FilterType = Enum.RaycastFilterType.Blacklist
@@ -32,13 +30,12 @@ local CloudHitbox = {
             _ignoreList = ignoreList,
             _filter = {},
             _raycastParams = raycastParams,
-            _touchedEvent = Instance.new("BindableEvent"),
             _enabledEvent = Instance.new("BindableEvent"),
             _isEnabled = false,
-            _wasEnabled = false
+            _wasEnabled = false,
+            _touchedFunction = nil,
         }
 
-        self.Touched = self._touchedEvent.Event
         self.Enabled = self._enabledEvent.Event
 
         setmetatable(self, CloudHitbox)
@@ -62,6 +59,13 @@ local CloudHitbox = {
         self._isEnabled = enabled
 
         self._enabledEvent:Fire(self._isEnabled)
+    end
+
+    function CloudHitbox:setTouchedFunction(func)
+        assert(self, "Missing 'self' argument")
+        assert(type(func) == "function" or func == nil, "func must be a boolean or nil, got "..typeof(func))
+
+        self._touchedFunction = func
     end
 
     function CloudHitbox.getPointCloud(modelOrPart, attachmentName)

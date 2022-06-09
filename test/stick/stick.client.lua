@@ -103,4 +103,4 @@ end
 tool.Equipped:Connect(onEquipped)
 tool.Unequipped:Connect(onUnequipped)
 tool.Activated:Connect(onActivated)
-hitbox.Touched:Connect(onTouched)
+hitbox:setTouchedFunction(onTouched)

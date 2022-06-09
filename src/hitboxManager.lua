@@ -1,23 +1,14 @@
-local DEBUG_COLOR_SERVER = Color3.new(0.1, 0.1, 0.1)
-local DEBUG_COLOR_CLIENT = Color3.new(0.65, 0.65, 0.65)
+local DEBUG_DURATION = 3 -- seconds
+local DEBUG_COLOR_HIT = Color3.new(0.1, 0.65, 0.1)
+local DEBUG_COLOR_NOHIT = Color3.new(0.75, 0.75, 0.75)
 local EMPTY_VECTOR3 = Vector3.new(0, 0, 0)
 local VELOCITY_EXTRAPOLATION = 1 / 10
 
 local RunService = game:GetService("RunService")
-local Debris = game:GetService("Debris")
 
-local isClient = RunService:IsClient()
+local Gizmos = require(script.Parent.Gizmos)
+
 local isServer = RunService:IsServer()
-
-local debugFolder = Instance.new("Folder")
-debugFolder.Name = "CloudHitboxDebug_"..(isClient and "Client" or "Server")
-debugFolder.Archivable = false
-debugFolder.Parent = workspace
-
-local serverDebugFolder
-if not isServer then
-    serverDebugFolder = workspace:WaitForChild("CloudHitboxDebug_Server")
-end
 
 local HitboxManager = {} do
     HitboxManager._hitboxes = {}
@@ -30,9 +21,6 @@ local HitboxManager = {} do
     local function setRaycastFilter(hitbox)
         local filter = hitbox._filter
         table.clear(filter)
-
-        table.insert(filter, debugFolder)
-        table.insert(filter, serverDebugFolder)
 
         for _, v in ipairs(hitbox._ignoreList) do
             if typeof(v) == "Instance" then
@@ -54,6 +42,34 @@ local HitboxManager = {} do
         end
     end
 
+    local debugLines = {}
+
+    Gizmos.onDraw:Connect(function(g)
+        if HitboxManager._settings.DebugMode then
+            local currentTime = time()
+            local camera = workspace.CurrentCamera
+            local cameraPosition = camera.CFrame.Position
+            local startPos, endPos
+
+            for i = #debugLines, 1, -1 do
+                local debugLine = debugLines[i]
+
+                if debugLine[1] < currentTime then
+                    table.remove(debugLines, i)
+                else
+                    startPos, endPos = debugLine[4], debugLine[5]
+
+                    local distToCamera = (cameraPosition - (startPos + endPos) / 2).Magnitude
+                    local width = math.log10(distToCamera) * 0.01
+
+                    g.setColor(debugLine[2])
+                    g.setTransparency(debugLine[3])
+                    g.drawLine(startPos, endPos, width)
+                end
+            end
+        end
+    end)
+
     local function onHeartbeat(_step)
         local currentTime = time()
 
@@ -70,31 +86,32 @@ local HitboxManager = {} do
                 for _, point in pairs(hitbox.pointCloud) do
                     local lastPosition = hitbox._lastCFrame * point
                     local currentPosition = hitbox.primaryPart.CFrame * point + (isServer and hitbox.primaryPart.Velocity * VELOCITY_EXTRAPOLATION or EMPTY_VECTOR3)
-                    local dir = (currentPosition - lastPosition)
-                    local magnitude = dir.magnitude
-
-                    if HitboxManager._settings.DebugMode then
-                        local debugLine = Instance.new("Part")
-                        debugLine.Name = "DebugLine"
-                        debugLine.Material = Enum.Material.Neon
-                        debugLine.Anchored = true
-                        debugLine.CanCollide = false
-                        debugLine.Locked = true
-                        debugLine.Color = isServer and DEBUG_COLOR_SERVER or DEBUG_COLOR_CLIENT
-                        debugLine.CFrame = CFrame.new(lastPosition, currentPosition) * CFrame.new(0, 0, -magnitude * 0.5)
-                        debugLine.Size = Vector3.new(0, 0, magnitude)
-
-                        debugLine.Parent = debugFolder
-
-                        Debris:AddItem(debugLine, 5)
-                    end
+                    local dir = currentPosition - lastPosition
 
                     setRaycastFilter(hitbox)
                     local raycastResult = workspace:Raycast(lastPosition, dir, hitbox._raycastParams)
 
+                    local didHit = false
+                    local hitColor
+
                     if raycastResult and not hitbox._hits[raycastResult.Instance] then
+                        didHit = true
                         hitbox._hits[raycastResult.Instance] = true
-                        hitbox._touchedEvent:Fire(raycastResult)
+
+                        local touchedFunction = hitbox._touchedFunction
+                        if type(touchedFunction) == "function" then
+                            hitColor = touchedFunction(raycastResult)
+                        end
+                    end
+
+                    if HitboxManager._settings.DebugMode then
+                        table.insert(debugLines, {
+                            currentTime + DEBUG_DURATION,
+                            didHit and (hitColor or DEBUG_COLOR_HIT) or DEBUG_COLOR_NOHIT,
+                            0,
+                            lastPosition,
+                            currentPosition
+                        })
                     end
                 end
             end
@@ -140,8 +157,6 @@ local HitboxManager = {} do
 
             self._connections.Heartbeat = RunService.Heartbeat:Connect(onHeartbeat)
         end
-
-        return debugFolder
     end
 
     function HitboxManager:stop()
