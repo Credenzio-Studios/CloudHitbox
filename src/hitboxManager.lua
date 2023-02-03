@@ -70,14 +70,25 @@ local HitboxManager = {} do
         end
     end)
 
-    local function onHeartbeat(_step)
+    local updateCounter = 0
+    local hitboxIndex = 0
+    local function onHeartbeat(deltaTime)
         local currentTime = time()
-
-        if currentTime - HitboxManager._lastUpdate < (1 / HitboxManager._settings.UpdateFrequency) then
-            return
-        end
+        local numHitboxes = #HitboxManager._activeHitboxes
+        local updateFrequency = HitboxManager._settings.UpdateFrequency
+        updateCounter += numHitboxes * deltaTime * updateFrequency
+        local numUpdates = math.floor(updateCounter)
+        updateCounter -= numUpdates
+        numUpdates = math.min(numHitboxes, numUpdates)
         
-        for hitboxIndex = #HitboxManager._activeHitboxes, 1, -1 do
+        while numUpdates > 0 do
+            numUpdates -= 1
+            hitboxIndex += 1
+
+            if hitboxIndex > numHitboxes then
+                hitboxIndex = 1
+            end
+
             local hitbox = HitboxManager._activeHitboxes[hitboxIndex]
 
             if hitbox.primaryPart == nil then
