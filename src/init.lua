@@ -1,12 +1,27 @@
+local RunService = game:GetService("RunService")
+local Players = game:GetService("Players")
+
 local settings = require(script.settings)
-local hitboxManager = require(script.hitboxManager)
-hitboxManager:run(settings)
+
+local hitboxWorkerScript = script.hitboxWorker
+local isServer = RunService:IsServer()
+
+local workerFolder = Instance.new("Folder")
+workerFolder.Archivable = false
+workerFolder.Name = "HitboxWorkers"
+
+if isServer then
+    workerFolder.Parent = game:GetService("ServerScriptService")
+else
+    workerFolder.Parent = Players.LocalPlayer:WaitForChild("PlayerScripts")
+end
 
 local CloudHitbox = {
-    version = "0.1",
+    version = "0.2",
     settings = settings
 } do
     CloudHitbox.__index = CloudHitbox
+    CloudHitbox.hitboxes = {}
 
     function CloudHitbox.new(instance, pointCloud, ignoreList)
         assert(typeof(instance) == "Instance", "instance must be a Model or BasePart instance, got "..typeof(instance))
@@ -14,33 +29,87 @@ local CloudHitbox = {
         assert(type(pointCloud) == "table" and #pointCloud > 0, "pointCloud must be a table with n > 0, got "..typeof(pointCloud))
         assert(typeof(ignoreList) == "table", "ignoreList must be a table, got "..typeof(ignoreList))
 
-        local self = hitboxManager:getHitbox(instance)
+        local self = CloudHitbox.hitboxes[instance]
         if self then
             return self
         end
 
-        local raycastParams = RaycastParams.new()
-        raycastParams.FilterType = Enum.RaycastFilterType.Blacklist
-        raycastParams.IgnoreWater = true
-        raycastParams.FilterDescendantsInstances = ignoreList
-
-        self = {
+        local properties = {
             primaryPart = instance,
             pointCloud = pointCloud,
             _ignoreList = ignoreList,
-            _filter = {},
-            _raycastParams = raycastParams,
             _enabledEvent = Instance.new("BindableEvent"),
+            _touchedBindable = Instance.new("BindableFunction"),
             _isEnabled = false,
-            _wasEnabled = false,
             _touchedFunction = nil,
+            _updateEvent = nil,
+            _actor = nil,
+            _workerScript = nil
         }
 
-        self.Enabled = self._enabledEvent.Event
+        properties.Enabled = properties._enabledEvent.Event
 
-        setmetatable(self, CloudHitbox)
-        
-        hitboxManager:addHitbox(self)
+        setmetatable(properties, CloudHitbox)
+
+        local actor = Instance.new("Actor")
+        actor.Name = instance:GetFullName()
+
+        local workerScript = hitboxWorkerScript:Clone()
+        workerScript.Disabled = false
+        workerScript.Parent = actor
+
+        local gizmosValue = Instance.new("ObjectValue")
+        gizmosValue.Name = "Gizmos"
+        gizmosValue.Value = script.Gizmos
+        gizmosValue.Parent = workerScript
+
+        actor.Parent = workerFolder
+
+        properties._actor = actor
+        properties._workerScript = workerScript
+
+        task.spawn(function()
+            local updateEvent = workerScript:WaitForChild("UpdateHitbox")
+            updateEvent:Fire(properties, CloudHitbox.settings)
+
+            properties._updateEvent = updateEvent
+        end)
+
+        self = setmetatable({
+            properties = properties
+        }, {
+            __index = properties,
+            __newindex = function(_t, k, v)
+                properties[k] = v
+
+                if k == "_ignoreList" then
+                    if self._updateEvent then
+                        self._updateEvent:Fire(properties)
+                    end
+                end
+            end
+        })
+
+        CloudHitbox.hitboxes[instance] = self
+
+        local destroyingConn
+        local ancestryChangedConn
+
+        local function OnDestroying()
+            destroyingConn:Disconnect()
+            ancestryChangedConn:Disconnect()
+
+            self:destroy()
+        end
+
+        local function OnAncestryChanged()
+            if not instance:IsDescendantOf(game) then
+                OnDestroying()
+            end
+        end
+
+        destroyingConn = instance.Destroying:Connect(OnDestroying)
+        ancestryChangedConn = instance.AncestryChanged:Connect(OnAncestryChanged)
 
         return self
     end
@@ -55,10 +124,12 @@ local CloudHitbox = {
         assert(self, "Missing 'self' argument")
         assert(type(enabled) == "boolean", "enabled must be a boolean, got "..typeof(enabled))
 
-        hitboxManager:setActiveHitbox(self, enabled)
         self._isEnabled = enabled
-
         self._enabledEvent:Fire(self._isEnabled)
+
+        if self._updateEvent then
+            self._updateEvent:Fire(self.properties)
+        end
     end
 
     function CloudHitbox:setTouchedFunction(func)
@@ -66,6 +137,16 @@ local CloudHitbox = {
         assert(type(func) == "function" or func == nil, "func must be a boolean or nil, got "..typeof(func))
 
         self._touchedFunction = func
+        self._touchedBindable.OnInvoke = func
+    end
+
+    function CloudHitbox:destroy()
+        CloudHitbox.hitboxes[self.primaryPart] = nil
+
+        self._enabledEvent:Destroy()
+        self._touchedBindable:Destroy()
+        self._workerScript.Disabled = true
+        self._actor:Destroy()
     end
 
     function CloudHitbox.getPointCloud(modelOrPart, attachmentName)
