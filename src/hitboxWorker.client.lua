@@ -114,7 +114,7 @@ local function onHeartbeat(_deltaTime)
                 if touchedBindable then
                     task.synchronize()
 
-                    hitColor = touchedBindable:Invoke(raycastResult)
+                    hitColor = touchedBindable:Invoke(raycastResult, dir.Unit)
                 end
             end
         end
