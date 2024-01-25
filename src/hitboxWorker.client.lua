@@ -9,6 +9,7 @@ local RunService = game:GetService("RunService")
 local Gizmos = require(script:WaitForChild("Gizmos").Value)
 
 local isServer = RunService:IsServer()
+local actor = script:GetActor()
 local hitboxData, managerSettings, hits, debugLines, filter = {}, {}, {}, {}, {}
 local lastCFrame
 
@@ -17,23 +18,44 @@ raycastParams.FilterType = Enum.RaycastFilterType.Blacklist
 raycastParams.IgnoreWater = true
 raycastParams.FilterDescendantsInstances = {}
 
-local updateEvent = Instance.new("BindableEvent")
-updateEvent.Name = "UpdateHitbox"
+local function setRaycastFilter()
+    table.clear(filter)
+
+    if hitboxData._ignoreList then
+        for _, v in ipairs(hitboxData._ignoreList) do
+            if typeof(v) == "Instance" then
+                table.insert(filter, v)
+            end
+        end
+    end
+
+    raycastParams.FilterDescendantsInstances = filter
+end
 
 local function onUpdate(newData, newSettings)
-    if newData._isEnabled ~= hitboxData._isEnabled then
+    if newData._isEnabled ~= nil and newData._isEnabled ~= hitboxData._isEnabled then
         table.clear(hits)
     end
 
-    hitboxData = newData
+    for k, v in pairs(newData) do
+        hitboxData[k] = v
+
+        if k == "_ignoreList" then
+            setRaycastFilter()
+        end
+    end
 
     if newSettings then
         managerSettings = newSettings
     end
 end
 
-updateEvent.Event:Connect(onUpdate)
-updateEvent.Parent = script
+local function onEnable(enabled)
+    hitboxData._isEnabled = enabled
+end
+
+actor:BindToMessage("Update", onUpdate)
+actor:BindToMessage("Enable", onEnable)
 
 Gizmos.onDraw:Connect(function(g)
     if managerSettings.DebugMode then
@@ -61,32 +83,18 @@ Gizmos.onDraw:Connect(function(g)
     end
 end)
 
-local function setRaycastFilter()
-    table.clear(filter)
-
-    for _, v in ipairs(hitboxData._ignoreList) do
-        if typeof(v) == "Instance" then
-            table.insert(filter, v)
-        end
-    end
-
-    raycastParams.FilterDescendantsInstances = filter
-end
-
 local lastUpdate = 0
 local function onHeartbeat(_deltaTime)
     local currentTime = os.clock()
 
     if not managerSettings.UpdateFrequency or currentTime - lastUpdate < 1 / managerSettings.UpdateFrequency then
-        task.synchronize()
-        setRaycastFilter()
         return
     end
 
     lastUpdate = currentTime
 
     if lastCFrame and hitboxData._isEnabled then
-        for _, point in pairs(hitboxData.pointCloud) do
+        for _, point in ipairs(hitboxData.pointCloud) do
             local lastPosition = lastCFrame * point
             local currentPosition = hitboxData.primaryPart.CFrame * point + (isServer and hitboxData.primaryPart.Velocity * VELOCITY_EXTRAPOLATION or EMPTY_VECTOR3)
             local dir = currentPosition - lastPosition
@@ -123,9 +131,6 @@ local function onHeartbeat(_deltaTime)
     if hitboxData.primaryPart then
         lastCFrame = hitboxData.primaryPart.CFrame + (isServer and hitboxData.primaryPart.Velocity * VELOCITY_EXTRAPOLATION or EMPTY_VECTOR3)
     end
-    
-    task.synchronize()
-    setRaycastFilter()
 end
 
 RunService.Heartbeat:ConnectParallel(onHeartbeat)

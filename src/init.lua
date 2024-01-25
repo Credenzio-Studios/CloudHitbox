@@ -1,3 +1,9 @@
+local IGNORE_PROPERTIES = {
+    _isEnabled = true,
+    _pendingUpdate = true,
+    _touchedFunction = true
+}
+
 local RunService = game:GetService("RunService")
 local Players = game:GetService("Players")
 
@@ -42,9 +48,9 @@ local CloudHitbox = {
             _touchedBindable = Instance.new("BindableFunction"),
             _isEnabled = false,
             _touchedFunction = nil,
-            _updateEvent = nil,
             _actor = nil,
-            _workerScript = nil
+            _workerScript = nil,
+            _pendingUpdate = nil
         }
 
         properties.Enabled = properties._enabledEvent.Event
@@ -68,12 +74,7 @@ local CloudHitbox = {
         properties._actor = actor
         properties._workerScript = workerScript
 
-        task.spawn(function()
-            local updateEvent = workerScript:WaitForChild("UpdateHitbox")
-            updateEvent:Fire(properties, CloudHitbox.settings)
-
-            properties._updateEvent = updateEvent
-        end)
+        task.defer(actor.SendMessage, actor, "Update", properties, CloudHitbox.settings)
 
         self = setmetatable({
             properties = properties
@@ -82,10 +83,10 @@ local CloudHitbox = {
             __newindex = function(_t, k, v)
                 properties[k] = v
 
-                if k == "_ignoreList" then
-                    if self._updateEvent then
-                        self._updateEvent:Fire(properties)
-                    end
+                if not IGNORE_PROPERTIES[k] then
+                    actor:SendMessage("Update", {
+                        [k] = v
+                    })
                 end
             end
         })
@@ -124,17 +125,18 @@ local CloudHitbox = {
         assert(self, "Missing 'self' argument")
         assert(type(enabled) == "boolean", "enabled must be a boolean, got "..typeof(enabled))
 
-        self._isEnabled = enabled
-        self._enabledEvent:Fire(self._isEnabled)
+        if self._isEnabled ~= enabled then
+            self._isEnabled = enabled
 
-        if self._updateEvent then
-            self._updateEvent:Fire(self.properties)
+            self._actor:SendMessage("Enable", enabled)
+
+            self._enabledEvent:Fire(self._isEnabled)
         end
     end
 
     function CloudHitbox:setTouchedFunction(func)
         assert(self, "Missing 'self' argument")
-        assert(type(func) == "function" or func == nil, "func must be a boolean or nil, got "..typeof(func))
+        assert(type(func) == "function" or func == nil, "func must be a function or nil, got "..typeof(func))
 
         self._touchedFunction = func
         self._touchedBindable.OnInvoke = func
