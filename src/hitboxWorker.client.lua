@@ -55,7 +55,7 @@ local function onEnable(enabled)
 end
 
 actor:BindToMessage("Update", onUpdate)
-actor:BindToMessage("Enable", onEnable)
+actor:BindToMessageParallel("Enable", onEnable)
 
 Gizmos.onDraw:Connect(function(g)
     if managerSettings.DebugMode then
