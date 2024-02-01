@@ -51,7 +51,10 @@ local function onUpdate(newData, newSettings)
 end
 
 local function onEnable(enabled)
-    hitboxData._isEnabled = enabled
+    if enabled ~= hitboxData._isEnabled then
+        hitboxData._isEnabled = enabled
+        table.clear(hits)
+    end
 end
 
 actor:BindToMessage("Update", onUpdate)
