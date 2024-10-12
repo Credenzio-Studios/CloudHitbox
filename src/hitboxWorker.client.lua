@@ -6,7 +6,7 @@ local VELOCITY_EXTRAPOLATION = 1 / 10
 
 local RunService = game:GetService("RunService")
 
-local Gizmos = require(script:WaitForChild("Gizmos").Value)
+--local Gizmos = require(script:WaitForChild("Gizmos").Value)
 
 local isServer = RunService:IsServer()
 local actor = script:GetActor()
@@ -60,7 +60,7 @@ end
 actor:BindToMessage("Update", onUpdate)
 actor:BindToMessageParallel("Enable", onEnable)
 
-Gizmos.onDraw:Connect(function(g)
+--[[Gizmos.onDraw:Connect(function(g)
     if managerSettings.DebugMode then
         local currentTime = os.clock()
         local camera = workspace.CurrentCamera
@@ -84,7 +84,7 @@ Gizmos.onDraw:Connect(function(g)
             end
         end
     end
-end)
+end)]]
 
 local lastUpdate = 0
 local function onHeartbeat(_deltaTime)

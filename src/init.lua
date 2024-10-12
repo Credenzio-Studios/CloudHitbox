@@ -64,10 +64,10 @@ local CloudHitbox = {
         workerScript.Disabled = false
         workerScript.Parent = actor
 
-        local gizmosValue = Instance.new("ObjectValue")
-        gizmosValue.Name = "Gizmos"
-        gizmosValue.Value = script.Gizmos
-        gizmosValue.Parent = workerScript
+        --local gizmosValue = Instance.new("ObjectValue")
+        --gizmosValue.Name = "Gizmos"
+        --gizmosValue.Value = script.Gizmos
+        --gizmosValue.Parent = workerScript
 
         actor.Parent = workerFolder
 
