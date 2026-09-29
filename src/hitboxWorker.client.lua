@@ -32,6 +32,24 @@ local function setRaycastFilter()
     raycastParams.FilterDescendantsInstances = filter
 end
 
+local onHeartbeat -- defined below; connected only while the hitbox is enabled (setUpdating)
+local heartbeatConnection
+
+-- The per-frame sweep runs only while the hitbox is enabled. It used to run on every frame for every hitbox,
+-- enabled or not, only to track lastCFrame; with a hitbox per NPC weapon on every client that was one parallel
+-- callback per NPC per frame. The sweep of an enabled hitbox starts from where it is when it is enabled.
+local function setUpdating(enabled)
+    if enabled and not heartbeatConnection then
+        local primaryPart = hitboxData.primaryPart
+
+        lastCFrame = primaryPart and primaryPart.CFrame + (isServer and primaryPart.Velocity * VELOCITY_EXTRAPOLATION or EMPTY_VECTOR3) or nil
+        heartbeatConnection = RunService.Heartbeat:ConnectParallel(onHeartbeat)
+    elseif not enabled and heartbeatConnection then
+        heartbeatConnection:Disconnect()
+        heartbeatConnection = nil
+    end
+end
+
 local function onUpdate(newData, newSettings)
     if newData._isEnabled ~= nil and newData._isEnabled ~= hitboxData._isEnabled then
         table.clear(hits)
@@ -48,6 +66,8 @@ local function onUpdate(newData, newSettings)
     if newSettings then
         managerSettings = newSettings
     end
+
+    setUpdating(hitboxData._isEnabled == true)
 end
 
 local function onEnable(enabled)
@@ -55,10 +75,13 @@ local function onEnable(enabled)
         hitboxData._isEnabled = enabled
         table.clear(hits)
     end
+
+    setUpdating(enabled)
 end
 
 actor:BindToMessage("Update", onUpdate)
-actor:BindToMessageParallel("Enable", onEnable)
+-- Serial, not parallel: it connects and disconnects the per-frame sweep.
+actor:BindToMessage("Enable", onEnable)
 
 --[[Gizmos.onDraw:Connect(function(g)
     if managerSettings.DebugMode then
@@ -87,7 +110,7 @@ actor:BindToMessageParallel("Enable", onEnable)
 end)]]
 
 local lastUpdate = 0
-local function onHeartbeat(_deltaTime)
+function onHeartbeat(_deltaTime)
     local currentTime = os.clock()
 
     if not managerSettings.UpdateFrequency or currentTime - lastUpdate < 1 / managerSettings.UpdateFrequency then
@@ -135,5 +158,3 @@ local function onHeartbeat(_deltaTime)
         lastCFrame = hitboxData.primaryPart.CFrame + (isServer and hitboxData.primaryPart.Velocity * VELOCITY_EXTRAPOLATION or EMPTY_VECTOR3)
     end
 end
-
-RunService.Heartbeat:ConnectParallel(onHeartbeat)
